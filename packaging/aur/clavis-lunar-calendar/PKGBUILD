@@ -24,7 +24,7 @@ install="$pkgname.install"
 # 指向 release CI 产出的 git archive 资产（与 SHA256SUMS 自洽；不用 GitHub 自动归档）
 source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/$pkgname-$pkgver.tar.gz")
 # 发版后回填（见文件头注释）
-sha256sums=('SKIP')
+sha256sums=('22e3fe96fbdec8defba606e60f4985ba02fe055b3d0b57421305bd93506e8e4e')
 
 package() {
     cd "$pkgname-$pkgver"

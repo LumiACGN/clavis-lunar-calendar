@@ -14,6 +14,6 @@ pkgbase = clavis-lunar-calendar
 	optdepends = jq: 数据版本检查（clavis-lunar-calendar-check-data）
 	optdepends = clavis-shell: 目标外壳（由上游安装器提供，不在官方仓库）
 	source = clavis-lunar-calendar-0.1.0.tar.gz::https://github.com/LumiACGN/clavis-lunar-calendar/releases/download/v0.1.0/clavis-lunar-calendar-0.1.0.tar.gz
-	sha256sums = SKIP
+	sha256sums = 22e3fe96fbdec8defba606e60f4985ba02fe055b3d0b57421305bd93506e8e4e
 
 pkgname = clavis-lunar-calendar
