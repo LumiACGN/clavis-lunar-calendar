@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2026 LumiACGN
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: 锚点漂移（Clavis 升级后 sync 失败）
+description: Clavis 升级后 ./install.sh --sync 报「anchor matched 0 times」或 block 定位失败时使用
+title: "[compat] 锚点漂移：Clavis <版本>"
+labels: ["compat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！本组件的两个锚点文件是
+        `Modules/Sidebars/Dashboard/infoTools/CalendarWidget.qml` 与
+        `Modules/Sidebars/Dashboard/infoTools/calendar_layout.js`（共 7 处补丁，其中 2 处是
+        block 模式的结构定位）。请先运行下面的命令并把输出贴进来（它只打印新版上游的
+        **公开代码文本**，不含任何凭据）：
+        ```bash
+        python3 scripts/patch_clavis_kit.py --explain-drift \
+            --manifest patches/manifest.json --target <你的 Clavis 源码树> --json
+        ```
+  - type: input
+    id: clavis-version
+    attributes:
+      label: Clavis 版本
+      placeholder: 例如 2026.10.08（pacman -Q clavis-shell 或 RELEASE.json）
+    validations:
+      required: true
+  - type: textarea
+    id: drift-json
+    attributes:
+      label: explain-drift --json 输出
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: sync-log
+    attributes:
+      label: sync 失败时的完整报错（可选）
+      description: 例如「门禁 FAIL (qmllint)」或「重放失败：… 已恢复到同步前状态」
+      render: text
+    validations:
+      required: false
+  - type: dropdown
+    id: upstream-has-lunar
+    attributes:
+      label: 上游是否已经自带农历/节气/休班角标？
+      description: 如果是，本组件应当主动退休（见 docs/COMPATIBILITY.md 的退休路径），而不是修锚点。
+      options:
+        - 不确定 / 否
+        - 是（上游日历已自带农历）
+    validations:
+      required: false

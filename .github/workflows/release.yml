@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2026 LumiACGN
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 校验 tag == manifest 版本 & CHANGELOG & PKGBUILD
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF#refs/tags/v}"
+          ver=$(jq -r '.tool_version' patches/manifest.json)
+          [ "$tag" = "$ver" ] || { echo "tag($tag) != manifest tool_version($ver)"; exit 1; }
+          grep -q "\[$tag\]" CHANGELOG.md || { echo "CHANGELOG.md 缺少 [$tag] 小节"; exit 1; }
+          grep -q "^pkgver=$tag$" packaging/aur/clavis-lunar-calendar/PKGBUILD \
+            || { echo "PKGBUILD pkgver 与 tag($tag) 不一致"; exit 1; }
+
+      - name: 产物自检（防止把空/旧产物打包）
+        run: |
+          set -euo pipefail
+          head -1 qml/ChineseCalendar.js | grep -q '.pragma library' \
+            || { echo "产物缺少 .pragma library 头"; exit 1; }
+          grep -q 'HOLIDAY_DATA_END = ' qml/ChineseCalendar.js \
+            || { echo "产物缺少 HOLIDAY_DATA_END（构建脚本注入失败？）"; exit 1; }
+          grep -q 'LUNAR_JS_VERSION = ' qml/ChineseCalendar.js \
+            || { echo "产物缺少 LUNAR_JS_VERSION"; exit 1; }
+          grep -q 'function dayInfo(' qml/ChineseCalendar.js \
+            || { echo "产物缺少适配层 dayInfo"; exit 1; }
+          # 产物必须与 lunar/adapter.js + lunar/vendor 自洽（改了源却没重建 → 这里红）
+          cp qml/ChineseCalendar.js /tmp/committed.js
+          python3 scripts/build_chinese_calendar.py
+          cmp qml/ChineseCalendar.js /tmp/committed.js \
+            || { echo "qml/ChineseCalendar.js 与 adapter/vendor 不自洽：请重跑 build 脚本并提交"; exit 1; }
+          echo "产物自检通过"
+
+      - name: 打包与校验和
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF#refs/tags/v}"
+          git archive --prefix="clavis-lunar-calendar-$tag/" -o "clavis-lunar-calendar-$tag.tar.gz" HEAD
+          sha256sum "clavis-lunar-calendar-$tag.tar.gz" > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: 发布
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            clavis-lunar-calendar-*.tar.gz
+            SHA256SUMS
+          generate_release_notes: true

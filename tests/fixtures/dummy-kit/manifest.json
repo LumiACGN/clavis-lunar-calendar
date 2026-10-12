@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "tool_version": "0.0.0",
+  "kit": {
+    "id": "clavis-dummy-kit",
+    "name": "测试夹具",
+    "order": 20,
+    "bin_name": null,
+    "config_dir": null,
+    "cache_dir": null,
+    "legacy_config": null,
+    "post_install_notes": []
+  },
+  "gates": {
+    "overrides": {},
+    "smoke": null
+  },
+  "upstream": {
+    "name": "clavis-shell",
+    "version": "2026.9.25",
+    "tree_hint": "/etc/xdg/quickshell/clavis"
+  },
+  "marker": {
+    "begin": "// BEGIN clavis-{group}",
+    "end": "// END clavis-{group}"
+  },
+  "files": [
+    {
+      "group": "dummy",
+      "path": "Modules/Sidebars/Dashboard/infoTools/CalendarWidget.qml",
+      "upstream_sha256": "1a695db029c4162833c171fafed834681a652e94d0745faeedd627f2216f21f3",
+      "edits": [
+        {
+          "id": "dummy-probe",
+          "anchor": "    property int monthShift: 0",
+          "replace": "    // BEGIN clavis-dummy\n    property int monthShift: 0\n    property string dummyProbe: \"clavis-dummy-kit\"\n    // END clavis-dummy",
+          "anchor_sha256": "6e6675738231673ef5c8a2cce0605b0eef9dbf815f5503d3b35adea711ada524"
+        }
+      ]
+    }
+  ],
+  "payload": [
+    {
+      "src": "DummyProbe.js",
+      "dest": "Common/functions/DummyProbe.js"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 LumiACGN
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+post_install() {
+    cat <<'EOF'
+== clavis-lunar-calendar 已安装。接下来（以你自己的用户身份）运行：
+
+     clavis-lunar-calendar-overlay install --dry-run   # 先预览（不写任何文件）
+     clavis-lunar-calendar-overlay install             # 正式安装
+
+   安装采用 overlay 方式：把 Clavis 源码树镜像到 ~/.config/quickshell/clavis/
+   再叠加补丁与数据层，不触碰 /etc。需要目标机已装 Clavis Shell。
+
+   可选：每年 11~12 月自动只读检查上游节假日数据是否有新版（默认不启用）：
+     systemctl --user enable --now clavis-lunar-calendar-refresh.timer
+
+   Clavis 升级后重新对齐：clavis-lunar-calendar-overlay sync
+   与其它 clavis 组件共存：overlay 由引擎按 order 重放全部已注册组件，互不覆盖。
+EOF
+}
+
+post_upgrade() {
+    post_install
+}
+
+pre_remove() {
+    echo "== 卸载前建议先移除 overlay：clavis-lunar-calendar-overlay uninstall"
+}

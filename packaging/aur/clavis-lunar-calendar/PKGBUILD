@@ -1,0 +1,74 @@
+# SPDX-FileCopyrightText: 2026 LumiACGN
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Maintainer: LumiACGN <196269580+LumiACGN@users.noreply.github.com>
+#
+# 提交 AUR 前请：
+#   1. 发版（tag vX.Y.Z）后，从 GitHub Release 页的 SHA256SUMS 取真实校验和回填 sha256sums
+#   2. makepkg --printsrcinfo > .SRCINFO
+pkgname=clavis-lunar-calendar
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Clavis Shell（niri + Quickshell）侧边栏日历的农历/节气/休班角标（overlay 安装，不触碰 /etc）"
+arch=('any')
+url="https://github.com/LumiACGN/clavis-lunar-calendar"
+license=('GPL-3.0-or-later')
+depends=('bash' 'python')
+optdepends=(
+    'qt6-declarative: 安装时的 qmllint/qmlformat 语法门禁与冒烟测试'
+    'rsync: overlay 同步更快'
+    'curl: 数据版本检查（clavis-lunar-calendar-check-data）'
+    'jq: 数据版本检查（clavis-lunar-calendar-check-data）'
+    'clavis-shell: 目标外壳（由上游安装器提供，不在官方仓库）'
+)
+install="$pkgname.install"
+# 指向 release CI 产出的 git archive 资产（与 SHA256SUMS 自洽；不用 GitHub 自动归档）
+source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/$pkgname-$pkgver.tar.gz")
+# 发版后回填（见文件头注释）
+sha256sums=('SKIP')
+
+package() {
+    cd "$pkgname-$pkgver"
+
+    # 数据树：引擎按脚本位置定位仓库根（scripts/../ = 本目录）——布局必须与仓库同构
+    install -Dm755 scripts/clavis_overlay.py "$pkgdir/usr/lib/$pkgname/scripts/clavis_overlay.py"
+    install -Dm755 scripts/patch_clavis_kit.py "$pkgdir/usr/lib/$pkgname/scripts/patch_clavis_kit.py"
+    install -Dm755 scripts/build_chinese_calendar.py "$pkgdir/usr/lib/$pkgname/scripts/build_chinese_calendar.py"
+    install -Dm755 scripts/check-lunar-data.sh "$pkgdir/usr/lib/$pkgname/scripts/check-lunar-data.sh"
+    install -Dm644 patches/manifest.json "$pkgdir/usr/lib/$pkgname/patches/manifest.json"
+    install -Dm644 patches/README.md "$pkgdir/usr/lib/$pkgname/patches/README.md"
+    install -Dm644 qml/ChineseCalendar.js "$pkgdir/usr/lib/$pkgname/qml/ChineseCalendar.js"
+    install -Dm644 qml/lunar-javascript-MIT.txt "$pkgdir/usr/lib/$pkgname/qml/lunar-javascript-MIT.txt"
+    install -Dm644 lunar/adapter.js "$pkgdir/usr/lib/$pkgname/lunar/adapter.js"
+    for f in lunar/vendor/*; do
+        install -Dm644 "$f" "$pkgdir/usr/lib/$pkgname/lunar/vendor/$(basename "$f")"
+    done
+    # smoke 门禁的测试文件（manifest 的 gates.smoke.file 相对仓库根；随包提供，
+    # 这样装了 qt6-declarative 的用户在 install/sync 时会真正冒烟已安装的那份字节）
+    install -Dm644 tests/smoke.qml "$pkgdir/usr/lib/$pkgname/tests/smoke.qml"
+
+    # 许可证与声明（含 vendored 库的 MIT 原文）
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 NOTICE "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
+    install -Dm644 qml/lunar-javascript-MIT.txt "$pkgdir/usr/share/licenses/$pkgname/lunar-javascript-MIT.txt"
+
+    # CLI 入口
+    install -d "$pkgdir/usr/bin"
+    cat > "$pkgdir/usr/bin/clavis-lunar-calendar-overlay" <<'EOF'
+#!/usr/bin/env bash
+# clavis-lunar-calendar overlay 引擎（安装/同步/校验/卸载/列出/摘除）
+exec python3 /usr/lib/clavis-lunar-calendar/scripts/clavis_overlay.py "$@"
+EOF
+    chmod 755 "$pkgdir/usr/bin/clavis-lunar-calendar-overlay"
+    cat > "$pkgdir/usr/bin/clavis-lunar-calendar-check-data" <<'EOF'
+#!/usr/bin/env bash
+# 只读检查上游农历库/节假日数据是否有新版（定时器用）
+exec /usr/lib/clavis-lunar-calendar/scripts/check-lunar-data.sh "$@"
+EOF
+    chmod 755 "$pkgdir/usr/bin/clavis-lunar-calendar-check-data"
+
+    # systemd 用户单元（只读检查；不自动 enable，见 .install 的提示）
+    install -Dm644 "packaging/aur/$pkgname/$pkgname-refresh.service" \
+        "$pkgdir/usr/lib/systemd/user/$pkgname-refresh.service"
+    install -Dm644 "packaging/aur/$pkgname/$pkgname-refresh.timer" \
+        "$pkgdir/usr/lib/systemd/user/$pkgname-refresh.timer"
+}

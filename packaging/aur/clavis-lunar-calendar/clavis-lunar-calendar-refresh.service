@@ -1,0 +1,7 @@
+[Unit]
+Description=检查 clavis-lunar-calendar 上游农历数据是否有新版（只读，不改文件）
+Documentation=https://github.com/LumiACGN/clavis-lunar-calendar/blob/main/docs/DATA.md
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/clavis-lunar-calendar-check-data --notify

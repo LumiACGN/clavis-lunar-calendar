@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "tool_version": "0.1.0",
+  "kit": {
+    "id": "clavis-lunar-calendar",
+    "name": "农历日历",
+    "order": 20,
+    "bin_name": null,
+    "config_dir": null,
+    "cache_dir": null,
+    "legacy_config": null,
+    "post_install_notes": [
+      "侧边栏 → 信息（info）页 → 日历：格子两行（日号 + 农历/节气/节日）+ 右上角 休/班 角标，悬停看详情",
+      "节假日数据截止日期与上游版本：./install.sh --check-data",
+      "次年放假安排公布后的更新方式见 docs/DATA.md"
+    ]
+  },
+  "upstream": {
+    "name": "clavis-shell",
+    "version": "2026.9.25",
+    "tree_hint": "/etc/xdg/quickshell/clavis"
+  },
+  "marker": {
+    "begin": "// BEGIN clavis-{group}",
+    "end": "// END clavis-{group}"
+  },
+  "files": [
+    {
+      "group": "lunar-calendar",
+      "path": "Modules/Sidebars/Dashboard/infoTools/CalendarWidget.qml",
+      "upstream_sha256": "1a695db029c4162833c171fafed834681a652e94d0745faeedd627f2216f21f3",
+      "edits": [
+        {
+          "id": "cw-import",
+          "anchor": "import \"calendar_layout.js\" as CalendarLayout\nimport \"../../../../Common/functions/DateFormat.js\" as DateFormat",
+          "replace": "import \"calendar_layout.js\" as CalendarLayout\nimport \"../../../../Common/functions/DateFormat.js\" as DateFormat\n// BEGIN clavis-lunar-calendar\nimport \"../../../../Common/functions/ChineseCalendar.js\" as ChineseCalendar\n// END clavis-lunar-calendar",
+          "anchor_sha256": "a17aa473c2c013c7453bb6f1646622dddea44c7fa58f503b45b3a2965c599a58"
+        },
+        {
+          "id": "cw-viewing-date",
+          "anchor": "    readonly property date viewingDate: CalendarLayout.getDateInXMonthsTime(monthShift)",
+          "replace": "    // BEGIN clavis-lunar-calendar\n    readonly property date viewingDate: {\n        Time.now; // 每 30s 触发重算：跨零点后「今天」高亮/农历自动跟随（qs.Services.Time）\n        return CalendarLayout.getDateInXMonthsTime(monthShift);\n    }\n    // END clavis-lunar-calendar",
+          "anchor_sha256": "a591327d32f3b0c1243377368fc839ff35b45d956423589fadbe4fe730b6546a"
+        },
+        {
+          "id": "cw-calendar-layout",
+          "anchor": "    readonly property var calendarLayout: CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0)",
+          "replace": "    // BEGIN clavis-lunar-calendar\n    readonly property var calendarLayout: {\n        Time.now; // 跨零点依赖（见 viewingDate）\n        return CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0);\n    }\n    // END clavis-lunar-calendar",
+          "anchor_sha256": "9c0bfc1dd120709d8c66bf67e5f34973a12d950756778fe28b9f5aec0906d3ce"
+        },
+        {
+          "id": "cw-delegate-ymd",
+          "mode": "block",
+          "block": {
+            "unique_line": "                            day: String(parent.cell.day)",
+            "opener_lookback": 8,
+            "sanity": [
+              "DayButton {",
+              "todayState: parent.cell.today"
+            ],
+            "sanity_post": [
+              "ymd: parent.cell.ymd"
+            ]
+          },
+          "anchor": "                        DayButton {\n                            anchors.centerIn: parent\n                            day: String(parent.cell.day)\n                            todayState: parent.cell.today\n                        }",
+          "replace": "                        DayButton {\n                            anchors.centerIn: parent\n                            day: String(parent.cell.day)\n                            todayState: parent.cell.today\n                            // BEGIN clavis-lunar-calendar\n                            ymd: parent.cell.ymd\n                            // END clavis-lunar-calendar\n                        }",
+          "anchor_sha256": "c1de8589d27ba5cd0377965d3a202ff99c3a20fb514c64910a840b3a04f26642"
+        },
+        {
+          "id": "cw-daybutton",
+          "mode": "block",
+          "block": {
+            "unique_line": "    component DayButton: RippleButton {",
+            "opener_lookback": 8,
+            "sanity": [
+              "contentItem: Text {",
+              "font.pixelSize:",
+              "dayButton.todayState === 1"
+            ],
+            "sanity_post": [
+              "daySubText",
+              "ChineseCalendar.dayInfo",
+              "dayButton.ymd.length"
+            ]
+          },
+          "anchor": "    component DayButton: RippleButton {\n        id: dayButton\n\n        property string day: \"\"\n        property int todayState: 0\n        property bool bold: false\n\n        implicitWidth: 38\n        implicitHeight: 38\n        toggled: todayState === 1\n        buttonRadius: Appearance.rounding.small\n        containerColor: dayButton.todayState === 1 ? Appearance.colors.colPrimary : \"transparent\"\n        stateLayerColor: dayButton.todayState === 1 ? Appearance.colors.colPrimaryHover :\n                                                      Appearance.colors.colLayer1Hover\n        pressedStateLayerColor: dayButton.todayState === 1 ? Appearance.colors.colPrimaryActive :\n                                                             Appearance.colors.colLayer1Active\n        rippleColor: dayButton.todayState === 1 ? Appearance.colors.colOnPrimary :\n                                                  Appearance.colors.colOnLayer1\n\n        contentItem: Text {\n            text: dayButton.day\n            horizontalAlignment: Text.AlignHCenter\n            verticalAlignment: Text.AlignVCenter\n            color: dayButton.todayState === 1 ? Appearance.colors.colOnPrimary : dayButton.todayState === 0\n                                                ? Appearance.colors.colOnLayer1 :\n                                                  Appearance.colors.colOutlineVariant\n            font.family: Fonts.ui\n            font.pixelSize: 14\n            font.weight: dayButton.bold ? Font.DemiBold : Font.Normal\n\n            Behavior on color {\n                ColorAnimation {\n                    duration: Appearance.animation.expressiveDefaultEffects.duration\n                    easing.type: Appearance.animation.expressiveDefaultEffects.type\n                    easing.bezierCurve: Appearance.animation.expressiveDefaultEffects.bezierCurve\n                }\n            }\n        }\n    }",
+          "replace": "    component DayButton: RippleButton {\n        // BEGIN clavis-lunar-calendar\n        // 格子两行：日期数字（上）+ 农历日/节气/节日（下）；右上角 休/班 角标。\n        // 数据来自 Common/functions/ChineseCalendar.js（dayInfo(ymd)）；任何异常都降级为原样式。\n        // 字号跟随主题：日号取 Typography.bodyMedium（上游基线 14）；9/8 是 38px 格内两行\n        // 布局的标定值，按比例派生——打了全局字号补丁的环境会自动跟随。\n        id: dayButton\n\n        property string day: \"\"\n        property int todayState: 0\n        property bool bold: false\n        property string ymd: \"\"\n        readonly property int dayFontSize: Typography.bodyMedium.pixelSize\n        readonly property int subFontSize: Math.max(8, Math.round(dayButton.dayFontSize * 0.64))\n        readonly property int badgeFontSize: Math.max(7, Math.round(dayButton.dayFontSize * 0.57))\n        readonly property var dayInfo: dayButton.ymd.length === 10 ? ChineseCalendar.dayInfo(dayButton.ymd) : null\n        readonly property bool inCurrentMonth: dayButton.todayState !== -1\n        readonly property bool hasSub: dayButton.inCurrentMonth && dayButton.dayInfo !== null\n                                       && dayButton.dayInfo.subText.length > 0\n        readonly property string subKind: dayButton.hasSub ? dayButton.dayInfo.subKind : \"\"\n        readonly property string badge: dayButton.inCurrentMonth && dayButton.dayInfo !== null ? dayButton.dayInfo.badge : \"\"\n        readonly property color subColor: dayButton.todayState === 1\n            ? Appearance.colors.colOnPrimary\n            : dayButton.subKind === \"festival\"\n                ? Appearance.colors.colPrimary\n                : dayButton.subKind === \"jieqi\"\n                    ? Appearance.colors.colTertiary\n                    : dayButton.subKind === \"lunarMonth\"\n                        ? Appearance.colors.colSecondary\n                        : Appearance.colors.colOutline\n        readonly property color badgeColor: dayButton.todayState === 1\n            ? Appearance.colors.colOnPrimary\n            : dayButton.badge === \"班\"\n                ? Appearance.colors.colOutline\n                : Appearance.colors.colPrimary\n\n        implicitWidth: 38\n        implicitHeight: 38\n        padding: 0\n        toggled: todayState === 1\n        buttonRadius: Appearance.rounding.small\n        containerColor: dayButton.todayState === 1 ? Appearance.colors.colPrimary : \"transparent\"\n        stateLayerColor: dayButton.todayState === 1 ? Appearance.colors.colPrimaryHover :\n                                                      Appearance.colors.colLayer1Hover\n        pressedStateLayerColor: dayButton.todayState === 1 ? Appearance.colors.colPrimaryActive :\n                                                             Appearance.colors.colLayer1Active\n        rippleColor: dayButton.todayState === 1 ? Appearance.colors.colOnPrimary :\n                                                  Appearance.colors.colOnLayer1\n\n        contentItem: Item {\n            implicitWidth: 38\n            implicitHeight: 38\n\n            Text {\n                id: dayText\n\n                anchors.horizontalCenter: parent.horizontalCenter\n                anchors.verticalCenter: parent.verticalCenter\n                anchors.verticalCenterOffset: dayButton.hasSub ? -6 : 0\n                text: dayButton.day\n                horizontalAlignment: Text.AlignHCenter\n                verticalAlignment: Text.AlignVCenter\n                color: dayButton.todayState === 1 ? Appearance.colors.colOnPrimary : dayButton.todayState === 0\n                                                    ? Appearance.colors.colOnLayer1 :\n                                                      Appearance.colors.colOutlineVariant\n                font.family: Fonts.ui\n                font.pixelSize: dayButton.dayFontSize\n                font.weight: dayButton.bold ? Font.DemiBold : Font.Normal\n\n                Behavior on color {\n                    ColorAnimation {\n                        duration: Appearance.animation.expressiveDefaultEffects.duration\n                        easing.type: Appearance.animation.expressiveDefaultEffects.type\n                        easing.bezierCurve: Appearance.animation.expressiveDefaultEffects.bezierCurve\n                    }\n                }\n            }\n\n            Text {\n                id: daySubText\n\n                anchors.horizontalCenter: parent.horizontalCenter\n                anchors.top: dayText.bottom\n                anchors.topMargin: -1\n                width: parent.width - 2\n                visible: dayButton.hasSub\n                text: dayButton.hasSub ? dayButton.dayInfo.subText : \"\"\n                elide: Text.ElideRight\n                horizontalAlignment: Text.AlignHCenter\n                color: dayButton.subColor\n                font.family: Fonts.ui\n                font.pixelSize: dayButton.subFontSize\n                font.weight: Font.Normal\n\n                Behavior on color {\n                    ColorAnimation {\n                        duration: Appearance.animation.expressiveDefaultEffects.duration\n                        easing.type: Appearance.animation.expressiveDefaultEffects.type\n                        easing.bezierCurve: Appearance.animation.expressiveDefaultEffects.bezierCurve\n                    }\n                }\n            }\n\n            Text {\n                id: dayBadge\n\n                anchors.right: parent.right\n                anchors.top: parent.top\n                anchors.rightMargin: 2\n                anchors.topMargin: 2\n                visible: dayButton.badge.length > 0\n                text: dayButton.badge\n                horizontalAlignment: Text.AlignHCenter\n                color: dayButton.badgeColor\n                font.family: Fonts.ui\n                font.pixelSize: dayButton.badgeFontSize\n                font.weight: Font.Medium\n            }\n        }\n\n        StyledToolTip {\n            text: dayButton.dayInfo !== null ? dayButton.dayInfo.tooltip : \"\"\n            visible: text.length > 0\n        }\n        // END clavis-lunar-calendar\n    }",
+          "anchor_sha256": "5879f10cc56590eaaf9d01a0504e8f630e904eede955328bca14ae52a10d149d"
+        }
+      ]
+    },
+    {
+      "group": "lunar-calendar",
+      "path": "Modules/Sidebars/Dashboard/infoTools/calendar_layout.js",
+      "upstream_sha256": "1f3c315bcb24688badebf41fa1756ba600cee3865c3e3587300084a2ee63681e",
+      "edits": [
+        {
+          "id": "cl-pad2",
+          "anchor": "function getCalendarLayout(dateObject, highlightToday) {",
+          "replace": "// BEGIN clavis-lunar-calendar\nfunction _pad2(value) {\n    return (value < 10 ? \"0\" : \"\") + value;\n}\n// END clavis-lunar-calendar\nfunction getCalendarLayout(dateObject, highlightToday) {",
+          "anchor_sha256": "ae75c4aae22f439f0d31790eed845299f7e045fd63cb606a93c7b1217db88477"
+        },
+        {
+          "id": "cl-cell-ymd",
+          "anchor": "                \"today\": isToday ? 1 : inCurrentMonth ? 0 : -1",
+          "replace": "                \"today\": isToday ? 1 : inCurrentMonth ? 0 : -1,\n                // BEGIN clavis-lunar-calendar\n                \"ymd\": cellDate.getFullYear() + \"-\" + _pad2(cellDate.getMonth() + 1) + \"-\" + _pad2(cellDate.getDate())\n                // END clavis-lunar-calendar",
+          "anchor_sha256": "7b844bd85afd6fd642933bd570ceb2e842a606b9168f9fb0263993fe49d2febb"
+        }
+      ]
+    }
+  ],
+  "payload": [
+    {
+      "src": "ChineseCalendar.js",
+      "dest": "Common/functions/ChineseCalendar.js"
+    },
+    {
+      "src": "lunar-javascript-MIT.txt",
+      "dest": "licenses/lunar-javascript-MIT.txt"
+    }
+  ],
+  "gates": {
+    "overrides": {
+      "Common/functions/ChineseCalendar.js": "qmllint"
+    },
+    "smoke": {
+      "file": "tests/smoke.qml",
+      "timeout_s": 60,
+      "stage": {
+        "qml/ChineseCalendar.js": "Common/functions/ChineseCalendar.js"
+      }
+    }
+  }
+}

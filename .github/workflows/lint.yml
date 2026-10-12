@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2026 LumiACGN
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 装依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends shellcheck jq
+
+      - name: shell 语法与 shellcheck
+        run: |
+          set -euo pipefail
+          mapfile -t shs < <(git ls-files '*.sh')
+          bash -n "${shs[@]}"
+          shellcheck -S warning "${shs[@]}"
+
+      - name: Python 语法
+        run: |
+          python3 - <<'PY'
+          import ast, pathlib
+          for f in pathlib.Path('.').rglob('*.py'):
+              ast.parse(f.read_text(encoding='utf-8'), str(f))
+          print('python syntax ok')
+          PY
+
+      - name: manifest 自检
+        run: python3 tests/test_manifest.py
+
+      - name: JSON 可解析（manifest 与测试夹具）
+        run: |
+          for f in $(git ls-files '*.json'); do
+            jq -e . "$f" >/dev/null || { echo "invalid JSON: $f"; exit 1; }
+          done
+
+      - name: 密钥扫描（gitleaks 全历史）
+        run: |
+          set -euo pipefail
+          # 用 CLI 直跑而不是 gitleaks-action：后者在仓库首个提交上会引用
+          # `<root-sha>^` 导致必然失败（已知缺陷）。版本与本地保持一致。
+          GITLEAKS_VERSION=8.30.1
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+          gitleaks git . --no-banner --redact
+
+      # 注：QML 语法门禁（qmlformat/qmllint）与 smoke 门禁需要 Clavis 组件上下文，只在
+      # 用户机器上由 overlay 引擎执行（scripts/clavis_overlay.py 的 run_gate / run_smoke），
+      # CI 里跳过；`tests/test_smoke.sh` 会在装了 qt6-declarative 的环境里跑真引擎冒烟。

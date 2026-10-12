@@ -1,0 +1,19 @@
+pkgbase = clavis-lunar-calendar
+	pkgdesc = Clavis Shell（niri + Quickshell）侧边栏日历的农历/节气/休班角标（overlay 安装，不触碰 /etc）
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/LumiACGN/clavis-lunar-calendar
+	install = clavis-lunar-calendar.install
+	arch = any
+	license = GPL-3.0-or-later
+	depends = bash
+	depends = python
+	optdepends = qt6-declarative: 安装时的 qmllint/qmlformat 语法门禁与冒烟测试
+	optdepends = rsync: overlay 同步更快
+	optdepends = curl: 数据版本检查（clavis-lunar-calendar-check-data）
+	optdepends = jq: 数据版本检查（clavis-lunar-calendar-check-data）
+	optdepends = clavis-shell: 目标外壳（由上游安装器提供，不在官方仓库）
+	source = clavis-lunar-calendar-0.1.0.tar.gz::https://github.com/LumiACGN/clavis-lunar-calendar/releases/download/v0.1.0/clavis-lunar-calendar-0.1.0.tar.gz
+	sha256sums = SKIP
+
+pkgname = clavis-lunar-calendar

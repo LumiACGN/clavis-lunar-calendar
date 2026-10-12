@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 LumiACGN
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 装依赖
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends jq rsync
+
+      - name: 补丁器/引擎测试（幂等、回滚、漂移、manifest 自检）
+        run: python3 -m unittest discover -s tests -v
+
+      - name: manifest 自检
+        run: python3 tests/test_manifest.py
+
+      - name: overlay 彩排（假 HOME + 假树，端到端）
+        run: tests/test_overlay.sh
+
+      # 真 QML 引擎冒烟：CI 的 ubuntu-latest 默认没有 qml（qt6-declarative），
+      # 脚本在缺 qml 时只打印跳过提示而不失败；本地请装 qt6-declarative 跑一遍。
+      - name: 数据层冒烟（真 QML 引擎，offscreen）
+        run: tests/test_smoke.sh
+
+      - name: 多组件共存彩排（双 kit，假 HOME）
+        run: tests/test_coexist.sh

@@ -1,0 +1,11 @@
+[Unit]
+Description=每年 11~12 月检查 clavis-lunar-calendar 上游数据更新
+
+[Timer]
+OnCalendar=*-11-* 10:17
+OnCalendar=*-12-* 10:17
+Persistent=true
+RandomizedDelaySec=15min
+
+[Install]
+WantedBy=timers.target

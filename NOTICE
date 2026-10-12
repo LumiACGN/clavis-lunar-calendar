@@ -1,0 +1,22 @@
+本仓库包含与衍生的第三方组件：
+
+1. Clavis Shell（github.com/StatIndet/quickshell）
+   本项目的 QML 补丁与新增模块基于 Clavis 的源码结构开发，补丁内容中包含其经修改的
+   代码片段；本项目是其衍生作品。
+   许可证：GPL-3.0-or-later
+   → 因此本仓库整体以 GPL-3.0-or-later 发布（见 LICENSE）。
+
+2. lunar-javascript（github.com/6tail/lunar-javascript）
+   lunar/vendor/lunar-1.7.7.js 是该库 1.7.7 版的 **lunar.js 原文逐字节副本**；
+   qml/ChineseCalendar.js 是「该原文 + 一行 CommonJS shim + 本仓库适配层」的构建产物，
+   **本仓库包含其字节**。它提供农历、节气、传统节日与干支的计算，
+   以及法定节假日/调休的内置数据表（当前数据截止 2026-10-10，见 docs/DATA.md）。
+   许可证：MIT
+   许可证原文：qml/lunar-javascript-MIT.txt（随组件一起安装到 Clavis 树的
+   licenses/lunar-javascript-MIT.txt；AUR 包里另在 /usr/share/licenses/clavis-lunar-calendar/）
+   版权：Copyright (c) 2018 6tail
+
+3. 法定节假日 / 调休数据
+   数据编码在 lunar-javascript 的 HolidayUtil 内置表里（即上述第 2 项的一部分），
+   本源为中华人民共和国国务院办公厅每年发布的节假日安排通知。
+   本项目不额外包含其它节假日数据，也不联网获取。

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 LumiACGN
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# 提交前密钥扫描（本地第一道防线；CI 里还有 gitleaks-action 的第二道）。
+# 启用方式（本仓库）：git config core.hooksPath .githooks
+set -euo pipefail
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "提示：未安装 gitleaks，跳过本地密钥扫描（CI 仍会扫描）" >&2
+    exit 0
+fi
+
+gitleaks git --staged --no-banner --redact --verbose

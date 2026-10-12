@@ -1,0 +1,83 @@
+# SPDX-FileCopyrightText: 2026 LumiACGN
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# 检查 Clavis 上游的最新 release（**仅手动触发**：Actions 页 → compat-watch → Run workflow，
+# 或终端 gh workflow run compat-watch）：
+#   * 本仓两个锚点文件（CalendarWidget.qml / calendar_layout.js）锚点漂移 → 自动开 issue
+#     （附补丁器的漂移报告）
+#   * 锚点仍匹配但版本更新 → 开一条"可更新基线"的提醒
+#
+# 说明：补丁器只会碰 patches/manifest.json 里登记的文件，也就是本仓的两个 fixture 对应物，
+# 所以这一步直接对上游最新发行树跑 patch_clavis_kit.py 即可（等价于对两个 fixture 文件做漂移检查）。
+name: compat-watch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 拉取上游最新 release
+        id: up
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=$(gh api repos/StatIndet/quickshell/releases/latest --jq '.tag_name')
+          url=$(gh api repos/StatIndet/quickshell/releases/latest --jq '.tarball_url')
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          curl -sSL "$url" -o up.tar.gz
+          mkdir up && tar -xzf up.tar.gz -C up --strip-components=1
+
+      - name: 对两个锚点文件跑补丁器（dry-run）
+        id: try
+        run: |
+          set -uo pipefail
+          FILES="Modules/Sidebars/Dashboard/infoTools/CalendarWidget.qml Modules/Sidebars/Dashboard/infoTools/calendar_layout.js"
+          for f in $FILES; do
+            [ -f "up/$f" ] || echo "WARN: 上游树上找不到 $f（被改名/搬家了？）" >&2
+          done
+          if python3 scripts/patch_clavis_kit.py \
+               --manifest patches/manifest.json --payload qml \
+               --target up --dry-run >/tmp/drift.txt 2>&1; then
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          fi
+          python3 scripts/patch_clavis_kit.py \
+            --manifest patches/manifest.json --payload qml \
+            --target up --explain-drift --json >/tmp/drift.json 2>&1 || true
+
+      - name: 漂移 → 开 issue
+        if: steps.try.outputs.ok != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ver=$(jq -r '.upstream.version' patches/manifest.json)
+          gh issue create \
+            --title "[compat] 锚点漂移：Clavis ${{ steps.up.outputs.tag }}（基线 $ver）" \
+            --body "$(printf '自动巡检发现锚点在最新上游不匹配（本仓两个锚点文件之一）。\n\n补丁器输出：\n```\n%s\n```\n\n漂移报告（JSON）：\n```json\n%s\n```\n\n修复流程见 patches/README.md；若漂移是因为上游日历自带了农历，走 docs/COMPATIBILITY.md 的退休路径。' "$(cat /tmp/drift.txt)" "$(cat /tmp/drift.json)")" \
+            || true
+
+      - name: 版本更新但锚点仍匹配 → 开提醒
+        if: steps.try.outputs.ok == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ver=$(jq -r '.upstream.version' patches/manifest.json)
+          tag="${{ steps.up.outputs.tag }}"
+          if [ "$tag" != "v$ver" ] && [ "$tag" != "$ver" ]; then
+            gh issue create \
+              --title "[compat] Clavis $tag 可用（锚点仍匹配，当前基线 $ver）" \
+              --body "补丁器对 $tag 的两个锚点文件全部匹配。可更新 tests/fixtures/upstream-$tag/ 下的 fixture、patches/manifest.json 的 upstream.version/upstream_sha256 并跑一遍测试。" \
+              || true
+          fi

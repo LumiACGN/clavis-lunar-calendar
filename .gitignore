@@ -1,0 +1,19 @@
+# 用户数据（运行时生成，绝不入库）
+config.json
+*.token
+*.log
+last-good.json
+state.json
+backups/
+
+# Python
+__pycache__/
+*.pyc
+
+# 本地草稿 / 临时产物
+*.local
+*.bak-*
+.screenshots-tmp/
+*.tar.gz
+tests/tmp/
+/tmp/
